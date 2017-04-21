@@ -6,13 +6,14 @@ import (
 	"io"
 	"reflect"
 	"sync"
-	"time"
 )
 
 type Fields map[string]interface{}
 
+type FieldFunc func() string
+
 type Jolt struct {
-	TimeFunc func() time.Time
+	defaults Fields
 
 	mu sync.Mutex
 	w  io.Writer
@@ -20,11 +21,13 @@ type Jolt struct {
 
 func New(w io.Writer) *Jolt {
 	return &Jolt{
-		w: w,
-		TimeFunc: func() time.Time {
-			return time.Now().UTC()
-		},
+		w:        w,
+		defaults: make(Fields),
 	}
+}
+
+func (j *Jolt) With(m Fields) {
+	j.defaults = m
 }
 
 func (j *Jolt) Print(args ...interface{}) {
@@ -48,18 +51,30 @@ func (j *Jolt) Print(args ...interface{}) {
 }
 
 func (j *Jolt) printf(format string, a ...interface{}) {
-	ts := j.TimeFunc().Format(time.RFC3339Nano)
-	format = fmt.Sprintf("%s - %s", ts, format)
-	j.mu.Lock()
-	fmt.Fprintf(j.w, format, a...)
-	j.mu.Unlock()
+	j.printFields(Fields{
+		"msg": fmt.Sprintf(format, a...),
+	})
 }
 
 func (j *Jolt) printFields(m Fields) {
-	if _, ok := m["ts"]; !ok {
-		m["ts"] = j.TimeFunc().Format(time.RFC3339Nano)
+	tmp := make(Fields)
+	for k, v := range j.defaults {
+		switch t := v.(type) {
+		case func() string:
+			tmp[k] = t()
+		case FieldFunc:
+			tmp[k] = t()
+		default:
+			tmp[k] = v
+		}
 	}
-	b, _ := json.Marshal(m)
+	for k, v := range m {
+		tmp[k] = v
+	}
+	b, err := json.Marshal(tmp)
+	if err != nil {
+		panic(err)
+	}
 	b = append(b, '\n')
 	j.mu.Lock()
 	j.w.Write(b)

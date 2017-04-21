@@ -20,10 +20,12 @@ func TestInvalidPrintArgsPanic(t *testing.T) {
 
 func ExampleJoltFields() {
 	j := jolt.New(os.Stdout)
-	j.TimeFunc = func() time.Time {
-		t, _ := time.Parse("2006", "2006")
-		return t
-	}
+	j.With(jolt.Fields{
+		"ts": func() string {
+			t, _ := time.Parse("2006", "2006")
+			return t.Format(time.RFC3339Nano)
+		},
+	})
 	j.Print(jolt.Fields{
 		"msg": "jolt'n like a sultan",
 	})
@@ -32,10 +34,12 @@ func ExampleJoltFields() {
 
 func ExampleJoltPrintf() {
 	j := jolt.New(os.Stdout)
-	j.TimeFunc = func() time.Time {
-		t, _ := time.Parse("2006", "2006")
-		return t
-	}
+	j.With(jolt.Fields{
+		"ts": func() string {
+			t, _ := time.Parse("2006", "2006")
+			return t.Format(time.RFC3339Nano)
+		},
+	})
 	j.Print("%s'n like a sultan", "jolt")
-	//Output: 2006-01-01T00:00:00Z - jolt'n like a sultan
+	//Output: {"msg":"jolt'n like a sultan","ts":"2006-01-01T00:00:00Z"}
 }
