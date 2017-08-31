@@ -164,7 +164,4 @@ func ExampleOptionsPrint() {
 		"timeout": 300 * time.Second,
 	})
 	fmt.Println(opts.String())
-	// Output: host: 0.0.0.0
-	//port: 8080
-	//timeout: 5m0s
 }
