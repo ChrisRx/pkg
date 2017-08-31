@@ -6,6 +6,8 @@ import (
 	"io"
 	"reflect"
 	"sync"
+
+	"github.com/ChrisRx/pkg/errchan"
 )
 
 type Fields map[string]interface{}
@@ -30,6 +32,12 @@ func (j *Jolt) With(m Fields) {
 	j.defaults = m
 }
 
+func (j *Jolt) PrintAll(name string, ep errchan.ErrorProducer) {
+	for err := range ep.Errors() {
+		j.Print(Fields{name: err.Error()})
+	}
+}
+
 func (j *Jolt) Print(args ...interface{}) {
 	if len(args) == 0 {
 		return
@@ -42,8 +50,15 @@ func (j *Jolt) Print(args ...interface{}) {
 		}
 	}
 	if len(args) > 0 {
-		format, ok := args[0].(string)
-		if !ok {
+		var format string
+		switch t := args[0].(type) {
+		case string:
+			format = t
+		case fmt.Stringer:
+			format = t.String()
+		case error:
+			format = t.Error()
+		default:
 			panic(fmt.Errorf("received invalid type '%v' in arguments", reflect.TypeOf(args[0])))
 		}
 		j.printf(format, args[1:]...)

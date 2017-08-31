@@ -3,6 +3,7 @@ package options
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"reflect"
 	"time"
 )
@@ -146,9 +147,9 @@ func (o *Options) With(modes ...Mode) *Options {
 func (o *Options) Apply(opts ...Opt) {
 	for _, opt := range opts {
 		if len(o.defaults) > 0 {
-			if _, ok := o.defaults[opt.Key]; !ok {
-				panic(fmt.Sprintf("Invalid option '%s'", opt.Key))
-			}
+			//if _, ok := o.defaults[opt.Key]; !ok {
+			//panic(fmt.Sprintf("Invalid option '%s'", opt.Key))
+			//}
 		}
 		o.checkType(opt.Key, opt.Value)
 		o.options[opt.Key] = opt.Value
@@ -215,7 +216,14 @@ func (o *Options) GetInt(key string) (v int) {
 
 func (o *Options) GetString(key string) (v string) {
 	if val, ok := o.Get(key); ok {
-		v, _ = val.(string)
+		switch t := val.(type) {
+		case string:
+			return t
+		case fmt.Stringer:
+			return t.String()
+		default:
+			panic(fmt.Errorf("unable to convert type '%v' into string", reflect.TypeOf(val)))
+		}
 	}
 	return
 }
@@ -225,6 +233,22 @@ func (o *Options) GetTime(key string) (v time.Time) {
 		v, _ = val.(time.Time)
 	}
 	return
+}
+
+func (o *Options) GetUrl(key string) (v *url.URL) {
+	if val, ok := o.Get(key); ok {
+		switch t := val.(type) {
+		case *url.URL:
+			return t
+		default:
+			panic(fmt.Errorf("unable to convert type '%v' into *url.URL", reflect.TypeOf(val)))
+		}
+	}
+	return
+}
+
+func (o *Options) Set(key string, v interface{}) {
+	o.Apply(Opt{key, v})
 }
 
 func (o *Options) All() []Opt {
